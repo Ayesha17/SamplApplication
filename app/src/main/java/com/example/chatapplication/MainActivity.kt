@@ -1,6 +1,8 @@
 package com.example.chatapplication
 
 import android.Manifest
+import android.app.DownloadManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
@@ -16,6 +18,7 @@ import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -51,6 +54,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val downloadmanager: DownloadManager =
+            getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val uri =
+            Uri.parse("https://upload.wikimedia.org/wikipedia/commons/e/e7/Java_Programming.pdf")
+        val request = DownloadManager.Request(uri)
+//        request.setTitle("Java_Programming.pdf")
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        val fileName =   SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
+        filePath = File(getOutputDirectory(), "$fileName.pdf")
+        Log.e("fileese", "file ${Uri.parse(getOutputDirectory().absolutePath)}")
+        request.setDestinationUri(Uri.fromFile(filePath))
+        downloadmanager.enqueue(request)
+
         val play = findViewById<Button>(R.id.playButton)
         record = findViewById<Button>(R.id.recordButton)
         setupPermissions()
@@ -148,48 +165,16 @@ class MainActivity : AppCompatActivity() {
     private fun startRecording() {
         Log.e("MainActivity", "file name ${filePath.absolutePath}")
 
-        recorder = MediaRecorder()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             recorder = MediaRecorder(this)
-//                .apply {
-//                setAudioSource(MediaRecorder.AudioSource.MIC)
-//                setOutputFormat(MediaRecorder.OutputFormat.OGG)
-//                setOutputFile(filePath)
-//                setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-//
-//                try {
-//                    prepare()
-//                    start()
-//                } catch (e: IOException) {
-//                    Log.e("MainActivity", "prepare() failed")
-//                }
-//
-//
-//            }
         } else {
             recorder = MediaRecorder()
-//                .apply {
-//                setAudioSource(MediaRecorder.AudioSource.MIC)
-//                setOutputFormat(MediaRecorder.OutputFormat.OGG)
-//                setOutputFile(filePath)
-//                setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-//
-//                try {
-//                    prepare()
-//                    start()
-//                } catch (e: IOException) {
-//                    Log.e("MainActivity", "prepare() failed")
-//                }
-//
-//
-//            }
         }
 Log.e("uri","uri ${Uri.fromFile(filePath)}")
         recorder.apply {
 
             this?.setAudioSource(MediaRecorder.AudioSource.MIC)
-            this?.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+            this?.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT)
             this?.setOutputFile(filePath.absolutePath)
             this?.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
 
