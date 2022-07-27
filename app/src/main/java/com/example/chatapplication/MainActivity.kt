@@ -1,19 +1,27 @@
 package com.example.chatapplication
 
 import android.Manifest
+import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.os.Parcelable
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -24,6 +32,32 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
+
+    var activityForResult = registerForActivityResult(StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // There are no request codes
+            val data: Intent? = result.data
+            Log.e("image uri", "image uri ${data?.data}")
+
+//                doSomeOperations()
+
+        }
+    }
+    private val takeImageResult =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
+            if (isSuccess) {
+
+//            latestTmpUri?.let { uri ->
+//                previewImage.setImageURI(uri)
+//            }
+            }
+        }
+
+    private val selectImageFromGalleryResult =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+//        uri?.let { previewImage.setImageURI(uri) }
+        }
+
 
     private var recorder: MediaRecorder? = null
     var mStartPlaying = true
@@ -62,12 +96,21 @@ class MainActivity : AppCompatActivity() {
         val request = DownloadManager.Request(uri)
 //        request.setTitle("Java_Programming.pdf")
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        val fileName =   SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
+        val fileName =
+            SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
         filePath = File(getOutputDirectory(), "$fileName.pdf")
         Log.e("fileese", "file ${Uri.parse(getOutputDirectory().absolutePath)}")
         request.setDestinationUri(Uri.fromFile(filePath))
         downloadmanager.enqueue(request)
 
+        val galleryImage = findViewById<Button>(R.id.open_gallery)
+        galleryImage.setOnClickListener {
+            selectImageFromGallery()
+        }
+        val image = findViewById<Button>(R.id.capt_image)
+        image.setOnClickListener {takeImage()
+//            showImagesDialog()
+        }
         val play = findViewById<Button>(R.id.playButton)
         record = findViewById<Button>(R.id.recordButton)
         setupPermissions()
@@ -103,15 +146,29 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun takeImage() {
+//        lifecycleScope.launchWhenStarted {
 
-    fun getOutputDirectory(): File {
-
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-            File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
-        }
-        return if (mediaDir != null && mediaDir.exists())
-            mediaDir else filesDir
+        val cameraFile = createFile( getOutputDirectory())
+        val photoURI =
+            FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID , cameraFile)
+//            getTmpFileUri().let { uri ->
+//                latestTmpUri = uri
+        takeImageResult.launch(photoURI)
+//            }
+//        }
     }
+
+    private fun selectImageFromGallery() = selectImageFromGalleryResult.launch("image/*")
+
+//    fun getOutputDirectory(): File {
+//
+//        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+//            File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
+//        }
+//        return if (mediaDir != null && mediaDir.exists())
+//            mediaDir else filesDir
+//    }
 
 
     private fun setupPermissions() {
@@ -162,6 +219,54 @@ class MainActivity : AppCompatActivity() {
         player = null
     }
 
+    private fun saveBitmap(bitmap: Bitmap, callback: ((String) -> Unit)? = null) {
+//        try {
+//            val file = createImageFile(applicationContext)
+//            val oStream = FileOutputStream(file)
+//            bitmap.compress(Bitmap.CompressFormat.PNG, 18, oStream)
+//            oStream.flush()
+//            oStream.close()
+//            callback?.invoke(file.absolutePath)
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//        }
+    }
+
+    private fun showImagesDialog() {
+        val pickIntent = Intent(
+            Intent.ACTION_PICK,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        )
+        pickIntent.type = "image/*"
+
+        pickIntent.putExtra(
+            Intent.EXTRA_MIME_TYPES,
+            arrayOf("image/png", "image/jpeg")
+        )
+
+        pickIntent.action = Intent.ACTION_GET_CONTENT
+
+
+//        val pickIntent = Intent(
+//            Intent.ACTION_PICK,
+//            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+//        )
+        val takePhotoIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+//        takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT,"image/*" )
+        val chooserIntent = Intent.createChooser(pickIntent, "Choose")
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf<Parcelable>(takePhotoIntent))
+        if (SDK_INT > Build.VERSION_CODES.Q) {
+            activityForResult.launch(pickIntent)
+        } else {
+            //support for older than android 11
+            startActivityForResult(chooserIntent, 111)
+        }
+
+    }
+
+    //    private fun createImageFile(activity: Context):File{
+////        return File()
+//    }
     private fun startRecording() {
         Log.e("MainActivity", "file name ${filePath.absolutePath}")
 
@@ -170,7 +275,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             recorder = MediaRecorder()
         }
-Log.e("uri","uri ${Uri.fromFile(filePath)}")
+        Log.e("uri", "uri ${Uri.fromFile(filePath)}")
         recorder.apply {
 
             this?.setAudioSource(MediaRecorder.AudioSource.MIC)
